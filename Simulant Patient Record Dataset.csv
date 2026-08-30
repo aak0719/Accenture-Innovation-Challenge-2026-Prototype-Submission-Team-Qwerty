@@ -1,0 +1,21 @@
+id,name,age,gender,chief_complaint,heart_rate,resp_rate,spo2,systolic_bp,temp,avpu,additional_flags
+P2000,Rajesh Kumar,34,Male,Cardiac arrest,38,6,68,62,35.0,U,known hypertensive
+P2001,Sunita Verma,45,Female,Severe trauma - RTA,168,42,80,210,40.8,P,active bleeding; trauma - RTA
+P2002,Aarav Sharma,8,Male,Anaphylaxis,172,44,78,65,37.2,V,allergic reaction history; pediatric - guardian present
+P2003,Kamla Devi,70,Female,Stroke symptoms - sudden onset,50,9,84,220,34.9,P,known diabetic; on anticoagulants; elderly - lives alone
+P2004,Amit Singh,28,Male,Chest pain,135,32,89,88,38.6,A,known hypertensive
+P2005,Ishita Roy,4,Female,High-grade fever with rigors,145,30,90,82,39.8,V,pediatric - guardian present
+P2006,Manoj Yadav,55,Male,Poisoning/overdose,48,9,88,180,38.4,V,psychiatric history; substance use suspected
+P2007,Priya Nair,30,Female,Postpartum hemorrhage,128,28,91,85,38.0,A,pregnant; active bleeding
+P2008,Suresh Prasad,60,Male,Fall from height,52,10,90,175,38.9,A,elderly - lives alone; suspected fracture
+P2020,Neha Gupta,26,Female,Chest pain - resolved on arrival,88,16,97,118,37.0,A,"pregnant; on anticoagulants (discriminator-override test: near-normal vitals, high-risk flags)"
+TEMP-001,Unidentified,,Unknown,"Multiple trauma - MCI bypass, unable to obtain full history",128,,81,,,P,mass-casualty bypass; unidentified/temp ID; minimal data on scene; low-confidence triage - high urgency flagged for immediate reassessment
+P2009,Anjali Mehta,22,Female,Moderate abdominal pain,108,23,94,96,37.9,A,none
+P2010,Rohan Das,15,Male,Asthma exacerbation - mild,58,13,93,155,37.8,A,none
+P2011,Pooja Chauhan,40,Female,Fracture - limb,102,22,94,94,37.7,A,suspected fracture; trauma - RTA
+P2012,Vinod Mahato,68,Male,"Generalized weakness, vague - patient minimizing symptoms",101,21,94,102,37.4,A,ambiguous/under-reported symptoms; patient reluctant to elaborate; vitals borderline - clinical suspicion warranted
+P2013,Shanti Kumari,75,Female,Dizziness/pre-syncope,110,24,93,98,37.6,A,known hypertensive; elderly - lives alone
+P2014,Kabir Ansari,6,Male,Laceration requiring sutures,95,21,95,100,37.5,A,pediatric - guardian present
+P2015,Riya Sen,19,Female,Mild headache,78,16,98,118,36.9,A,first-time patient - no prior history on file
+P2016,Deepak Oraon,50,Male,Minor laceration,82,15,97,126,36.8,A,none
+P2017,Fatima Khatoon,27,Female,Skin rash,72,14,99,110,36.6,A,allergic reaction history
