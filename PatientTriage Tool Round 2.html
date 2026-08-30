@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PatientTriage.ai - Intelligent ER & Resource Allocation Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        triage: {
+                            blue: '#3b82f6',
+                            red: '#ef4444',
+                            orange: '#f97316',
+                            yellow: '#eab308',
+                            green: '#22c55e'
+                        },
+                        surge: {
+                            normal: '#22c55e',
+                            moderate: '#eab308',
+                            critical: '#f97316',
+                            severe: '#ef4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen pb-12" x-data="triageDashboard()" x-init="init()">
+
+    <div x-show="showResourceSetupModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-200 bg-blue-600 text-white flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold">Hospital Resource & Staffing Setup</h3>
+                    <p class="text-xs text-blue-100">Configure capacity, free/used beds, and active medical staff</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white">
+                    <i class="fa-solid fa-hospital text-lg"></i>
+                </div>
+            </div>
+            
+            <div class="p-6 space-y-5">
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5"><i class="fa-solid fa-bed text-blue-600 mr-1.5"></i> Bed & Seating Allocation (Total & Free)</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-slate-800 block">Critical / Resus Beds</span>
+                            <div class="flex gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500">Total</label>
+                                    <input type="number" x-model.number="resources.beds.critical.total" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500">Free</label>
+                                    <input type="number" x-model.number="resources.beds.critical.free" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center text-emerald-600">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-slate-800 block">Emergency Beds</span>
+                            <div class="flex gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500">Total</label>
+                                    <input type="number" x-model.number="resources.beds.emergency.total" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500">Free</label>
+                                    <input type="number" x-model.number="resources.beds.emergency.free" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center text-emerald-600">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-slate-800 block">General Beds</span>
+                            <div class="flex gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500">Total</label>
+                                    <input type="number" x-model.number="resources.beds.general.total" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500">Free</label>
+                                    <input type="number" x-model.number="resources.beds.general.free" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center text-emerald-600">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-slate-800 block">Chairs</span>
+                            <div class="flex gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500">Total</label>
+                                    <input type="number" x-model.number="resources.beds.chairs.total" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500">Free</label>
+                                    <input type="number" x-model.number="resources.beds.chairs.free" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center text-emerald-600">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5"><i class="fa-solid fa-user-doctor text-blue-600 mr-1.5"></i> Medical Staff on Duty</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Doctors on Duty</label>
+                            <input type="number" x-model.number="resources.staff.doctors.total" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center">
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nurses on Duty</label>
+                            <input type="number" x-model.number="resources.staff.nurses.total" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg font-bold text-center">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                    <button @click="showResourceSetupModal = false" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition">
+                        Save Resource Configuration
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md">
+                    <i class="fa-solid fa-heart-pulse text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                        PatientTriage<span class="text-blue-600">.ai</span>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">ER & Resource Allocation Engine</span>
+                    </h1>
+                    <p class="text-xs text-slate-500">Live Triage Queue & Surge Protocol Engine</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                <div class="flex items-center space-x-2 text-xs font-medium text-slate-600">
+                    <i class="fa-regular fa-clock text-blue-600"></i>
+                    <span>Sim. Clock:</span>
+                    <strong class="text-slate-900 font-mono text-sm" x-text="simTimeString"></strong>
+                </div>
+                <div class="h-4 w-px bg-slate-300"></div>
+                <div class="flex items-center space-x-1">
+                    <button @click="adjustTime(-5)" class="px-2 py-1 bg-white hover:bg-slate-200 text-slate-700 rounded text-xs font-medium shadow-2xs transition">-5m</button>
+                    <button @click="adjustTime(5)" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium shadow-2xs transition">+5m</button>
+                    <button @click="adjustTime(30)" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium shadow-2xs transition">+30m</button>
+                    <button @click="toggleSim()" class="p-1.5 text-slate-600 hover:text-slate-900 rounded transition">
+                        <i class="fa-solid" :class="simRunning ? 'fa-pause text-amber-600' : 'fa-play text-emerald-600'"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button @click="showResourceSetupModal = true" class="inline-flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-sm font-medium border border-slate-300 transition">
+                    <i class="fa-solid fa-sliders text-blue-600"></i>
+                    <span>Resources</span>
+                </button>
+                <label class="cursor-pointer inline-flex items-center space-x-2 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-medium shadow-2xs transition">
+                    <i class="fa-solid fa-file-arrow-up text-blue-600"></i>
+                    <span>Import CSV</span>
+                    <input type="file" accept=".csv" @change="handleCSVImport($event)" class="hidden">
+                </label>
+                <button @click="openNewIntakeModal()" class="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>New Intake</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
+
+        <div class="rounded-2xl p-4 shadow-sm border flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors"
+             :class="surgeLevelClass">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-xl bg-white/80 flex items-center justify-center text-xl shadow-2xs" :class="surgeIconColorClass">
+                    <i class="fa-solid" :class="surgeIconClass"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-bold uppercase tracking-wider opacity-80">ED Operational Surge Status</div>
+                    <div class="text-lg font-black" x-text="surgeStatusTitle"></div>
+                    <p class="text-xs opacity-90" x-text="surgeStatusMeaning"></p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4 bg-white/80 backdrop-blur-xs px-4 py-2 rounded-xl border border-slate-200/50 text-slate-900 font-mono text-right">
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-sans font-bold">Surge Ratio (Load / Doctor)</div>
+                    <div class="text-base font-extrabold" x-text="surgeRatioValue + 'x (Queue ' + queue.length + ' + Used Beds ' + totalUsedBeds + ') / ' + resources.staff.doctors.total + ' Docs'"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 flex-1 flex flex-col justify-center">
+                    <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-bell text-amber-500 animate-bounce"></i> Real-Time Re-Assessment Alerts
+                        </h3>
+                        <span class="text-[10px] font-mono px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full" x-text="alertPatients.length + ' Pending Alerts'"></span>
+                    </div>
+
+                    <template x-if="alertPatients.length > 0">
+                        <div class="bg-amber-50 border-l-4 border-amber-500 p-3.5 rounded-xl shadow-xs flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0 text-xs">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-amber-900">Re-Assessment Threshold Exceeded</h4>
+                                    <p class="text-[11px] text-amber-700" x-text="alertBannerText"></p>
+                                </div>
+                            </div>
+                            <button @click="selectPatient(alertPatients[0])" class="text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium px-3 py-1.5 rounded-lg shadow-2xs transition shrink-0">
+                                Inspect
+                            </button>
+                        </div>
+                    </template>
+
+                    <template x-if="alertPatients.length === 0">
+                        <div class="text-center py-6 text-slate-400 text-xs">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-xl mb-1"></i>
+                            <p>All queue patients are within safe wait-time thresholds.</p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-3.5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-bed-pulse text-blue-600"></i> ED Resource & Staff Tracking
+                    </h3>
+                    <button @click="showResourceSetupModal = true" class="text-[11px] text-blue-600 hover:underline font-semibold">Configure</button>
+                </div>
+
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <span class="text-[10px] text-slate-500 block font-medium">Critical</span>
+                        <div class="text-xs font-bold text-slate-900 mt-0.5">
+                            <span class="text-red-600" x-text="(resources.beds.critical.total - resources.beds.critical.free)"></span>/<span x-text="resources.beds.critical.total"></span>
+                        </div>
+                        <button @click="freeUpBed('critical')" class="mt-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200 transition" title="Discharge / Free Up Bed">
+                            <span x-text="resources.beds.critical.free + ' Free'"></span> 🔄
+                        </button>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <span class="text-[10px] text-slate-500 block font-medium">Emergency</span>
+                        <div class="text-xs font-bold text-slate-900 mt-0.5">
+                            <span class="text-orange-600" x-text="(resources.beds.emergency.total - resources.beds.emergency.free)"></span>/<span x-text="resources.beds.emergency.total"></span>
+                        </div>
+                        <button @click="freeUpBed('emergency')" class="mt-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200 transition" title="Discharge / Free Up Bed">
+                            <span x-text="resources.beds.emergency.free + ' Free'"></span> 🔄
+                        </button>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <span class="text-[10px] text-slate-500 block font-medium">General</span>
+                        <div class="text-xs font-bold text-slate-900 mt-0.5">
+                            <span class="text-blue-600" x-text="(resources.beds.general.total - resources.beds.general.free)"></span>/<span x-text="resources.beds.general.total"></span>
+                        </div>
+                        <button @click="freeUpBed('general')" class="mt-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200 transition" title="Discharge / Free Up Bed">
+                            <span x-text="resources.beds.general.free + ' Free'"></span> 🔄
+                        </button>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <span class="text-[10px] text-slate-500 block font-medium">Chairs</span>
+                        <div class="text-xs font-bold text-slate-900 mt-0.5">
+                            <span class="text-purple-600" x-text="(resources.beds.chairs.total - resources.beds.chairs.free)"></span>/<span x-text="resources.beds.chairs.total"></span>
+                        </div>
+                        <button @click="freeUpBed('chairs')" class="mt-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200 transition" title="Discharge / Free Up Bed">
+                            <span x-text="resources.beds.chairs.free + ' Free'"></span> 🔄
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-blue-50/60 p-2 rounded-xl border border-blue-100 flex items-center justify-between">
+                        <div class="flex items-center space-x-1.5">
+                            <div class="w-6 h-6 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 text-[11px]">
+                                <i class="fa-solid fa-user-doctor"></i>
+                            </div>
+                            <span class="text-[11px] font-semibold text-blue-900">Doctors on Duty</span>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-blue-700" x-text="resources.staff.doctors.total"></span>
+                    </div>
+                    <div class="bg-emerald-50/60 p-2 rounded-xl border border-emerald-100 flex items-center justify-between">
+                        <div class="flex items-center space-x-1.5">
+                            <div class="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 text-[11px]">
+                                <i class="fa-solid fa-user-nurse"></i>
+                            </div>
+                            <span class="text-[11px] font-semibold text-emerald-900">Nurses on Duty</span>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-emerald-700" x-text="resources.staff.nurses.total"></span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between bg-slate-100 p-2.5 rounded-xl border border-slate-200">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-6 h-6 rounded-lg bg-slate-200 flex items-center justify-center text-slate-700 text-[11px]">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <div>
+                            <span class="text-[11px] font-bold text-slate-900 block leading-tight">Patients per Doctor (Load)</span>
+                            <span class="text-[9px] text-slate-500">(Queue + Used Beds) / Doctors</span>
+                        </div>
+                    </div>
+                    <div class="text-right font-mono">
+                        <span class="text-xs font-extrabold text-slate-900" x-text="patientsPerDoctorRatio"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total in Queue</p>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="queue.length"></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border-l-4 border-t border-r border-b border-slate-200 border-l-triage-blue shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-blue-600">Blue (Bypass)</p>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="getCountByColor('blue')"></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                    <i class="fa-solid fa-truck-medical"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border-l-4 border-t border-r border-b border-slate-200 border-l-triage-red shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-red-600">Red (Emergent)</p>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="getCountByColor('red')"></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-600">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border-l-4 border-t border-r border-b border-slate-200 border-l-triage-orange shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-orange-600">Orange (Urgent)</p>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="getCountByColor('orange')"></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border-l-4 border-t border-r border-b border-slate-200 border-l-triage-yellow shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-yellow-600">Yellow (Semi-Urg.)</p>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="getCountByColor('yellow')"></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center text-yellow-600">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border-l-4 border-t border-r border-b border-slate-200 border-l-triage-green shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-green-600">Green (Routine)</p>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="getCountByColor('green')"></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Triage Queue Table & Fast-Track Surge Management</h3>
+                    <p class="text-xs text-slate-500">Sorted by Severity Color ➔ Triage Score ➔ Wait Time with Fast-Track Options for Green/Yellow Tiers</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                        </span>
+                        <input type="text" x-model="searchQuery" placeholder="Search patient name, ID..." class="pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-56">
+                    </div>
+                    <select x-model="filterTier" class="text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">All Tiers</option>
+                        <option value="blue">Blue</option>
+                        <option value="red">Red</option>
+                        <option value="orange">Orange</option>
+                        <option value="yellow">Yellow</option>
+                        <option value="green">Green</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto min-h-[280px]">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wider">
+                            <th class="py-3 px-4">Patient Name</th>
+                            <th class="py-3 px-4">Assigned Colour</th>
+                            <th class="py-3 px-4">Score</th>
+                            <th class="py-3 px-4">Reason (AI Clinical Rationale)</th>
+                            <th class="py-3 px-4">Confidence</th>
+                            <th class="py-3 px-4 text-center">AI Allot Bed / Fast-Track</th>
+                            <th class="py-3 px-4 text-center">Override</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+                        <template x-for="patient in filteredQueue" :key="patient.id">
+                            <tr @click="selectPatient(patient)" 
+                                class="hover:bg-blue-50/50 cursor-pointer transition"
+                                :class="selectedPatient && selectedPatient.id === patient.id ? 'bg-blue-50/80 ring-1 ring-blue-300' : ''">
+                                <td class="py-3 px-4 font-medium text-slate-900 flex items-center space-x-2.5">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs shadow-2xs"
+                                         :class="patient.age < 12 ? 'bg-purple-100 text-purple-700' : (patient.gender === 'Female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700')">
+                                        <i class="fa-solid" :class="patient.age < 12 ? 'fa-child' : (patient.gender === 'Female' ? 'fa-venus' : 'fa-mars')"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold text-slate-900" x-text="patient.name"></div>
+                                        <div class="text-xs text-slate-500 flex items-center gap-2">
+                                            <span x-text="patient.id"></span> • <span x-text="patient.age + ' yrs, ' + patient.gender"></span> • Wait: <span class="font-medium text-slate-700" x-text="patient.waitTime + 'm'"></span>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td class="py-3 px-4">
+                                    <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide border shadow-2xs"
+                                          :class="badgeColorClass(patient.assignedColor)">
+                                        <span class="w-2 h-2 rounded-full" :class="dotColorClass(patient.assignedColor)"></span>
+                                        <span x-text="patient.assignedColor"></span>
+                                    </span>
+                                </td>
+
+                                <td class="py-3 px-4 font-mono font-bold text-slate-700 text-xs" x-text="patient.score"></td>
+
+                                <td class="py-3 px-4 text-xs text-slate-700 max-w-sm font-medium leading-relaxed" :title="patient.staffReason" x-text="patient.staffReason"></td>
+
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-16 bg-slate-200 rounded-full h-2 overflow-hidden">
+                                            <div class="h-2 rounded-full" :class="patient.confidence < 80 ? 'bg-red-500' : 'bg-blue-600'" :style="'width: ' + patient.confidence + '%'"></div>
+                                        </div>
+                                        <span class="text-xs font-mono" :class="patient.confidence < 80 ? 'text-red-600 font-bold' : 'text-slate-700 font-medium'" x-text="patient.confidence + '%'"></span>
+                                        <template x-if="patient.confidence < 80">
+                                            <span title="Uncertainty flagged (<80% confidence)" class="text-red-500 text-xs cursor-help">⚠️</span>
+                                        </template>
+                                    </div>
+                                </td>
+
+                                <td class="py-3 px-4 text-center" @click.stop>
+                                    <template x-if="isAllBedsFull && (patient.assignedColor === 'green' || patient.assignedColor === 'yellow')">
+                                        <button @click="sendToFastTrack(patient)" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg shadow-2xs transition flex items-center justify-center gap-1.5 mx-auto animate-pulse">
+                                            <i class="fa-solid fa-person-walking-arrow-right text-[10px]"></i>
+                                            <span>Fast-Track Express</span>
+                                        </button>
+                                    </template>
+                                    <template x-if="!(isAllBedsFull && (patient.assignedColor === 'green' || patient.assignedColor === 'yellow'))">
+                                        <button @click="allotRecommendedBed(patient)" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-2xs transition flex items-center justify-center gap-1.5 mx-auto">
+                                            <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
+                                            <span x-text="'Allot ' + getLiveCascadeBedRecommendation(patient)"></span>
+                                        </button>
+                                    </template>
+                                </td>
+
+                                <td class="py-3 px-4 text-center" @click.stop>
+                                    <button @click="openOverrideModal(patient)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-medium rounded-lg border border-slate-300 shadow-2xs transition">
+                                        <i class="fa-solid fa-sliders mr-1 text-slate-500"></i> Override
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+
+                        <template x-if="filteredQueue.length === 0">
+                            <tr>
+                                <td colspan="7" class="text-center py-12 text-slate-400 text-sm">
+                                    <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-300"></i>
+                                    <p>No patients found in the active queue.</p>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <template x-if="selectedPatient">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-4 gap-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold shadow-xs"
+                             :class="selectedPatient.age < 12 ? 'bg-purple-100 text-purple-700' : (selectedPatient.gender === 'Female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700')">
+                            <i class="fa-solid" :class="selectedPatient.age < 12 ? 'fa-child' : (selectedPatient.gender === 'Female' ? 'fa-venus' : 'fa-mars')"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                                <span x-text="selectedPatient.name"></span>
+                                <span class="text-xs font-bold uppercase px-2.5 py-0.5 rounded-full border" :class="badgeColorClass(selectedPatient.assignedColor)" x-text="selectedPatient.assignedColor"></span>
+                                <template x-if="selectedPatient.confidence < 80">
+                                    <span class="text-xs bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full font-bold border border-red-300 flex items-center gap-1 shadow-sm">⚠️ Low Certainty (&lt;80%)</span>
+                                </template>
+                            </h3>
+                            <p class="text-xs text-slate-500">
+                                ID: <span class="font-mono font-medium text-slate-700" x-text="selectedPatient.id"></span> • 
+                                <span x-text="selectedPatient.age + ' Years, ' + selectedPatient.gender"></span> • 
+                                Live AI Recommendation: <strong class="text-blue-600" x-text="getLiveCascadeBedRecommendation(selectedPatient)"></strong>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <template x-if="isAllBedsFull && (selectedPatient.assignedColor === 'green' || selectedPatient.assignedColor === 'yellow')">
+                            <button @click="sendToFastTrack(selectedPatient)" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-person-walking-arrow-right"></i>
+                                <span>Fast-Track Express (Leave Queue)</span>
+                            </button>
+                        </template>
+                        <button @click="openOverrideModal(selectedPatient)" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-300 shadow-2xs transition">
+                            <i class="fa-solid fa-sliders mr-1.5 text-slate-500"></i> Clinician Override
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl p-5 text-white shadow-md relative overflow-hidden">
+                    <div class="absolute -right-6 -bottom-6 opacity-10 text-9xl">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2 py-0.5 bg-blue-500/30 border border-blue-400/40 rounded text-xs font-semibold uppercase tracking-wider text-blue-200">Gemini AI Clinical Prediction</span>
+                            <span class="text-xs text-blue-200">• Decompensation Risk: <strong class="text-amber-300" x-text="selectedPatient.aiPrediction.riskLevel"></strong></span>
+                        </div>
+                        <div class="text-xs font-mono" :class="selectedPatient.confidence < 80 ? 'text-red-300 font-bold' : 'text-blue-200'">
+                            Confidence: <span x-text="selectedPatient.confidence + '%'"></span>
+                        </div>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-1" x-text="selectedPatient.aiPrediction.primaryCondition"></h4>
+                    <p class="text-xs text-blue-100 leading-relaxed font-medium" x-text="selectedPatient.aiPrediction.rationale"></p>
+                </div>
+
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                        <h5 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-notes-medical text-blue-600"></i> Patient Clinical Record & Observations
+                        </h5>
+                        <span class="text-xs font-mono text-slate-500">Score: <strong class="text-slate-900" x-text="selectedPatient.score"></strong></span>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-bold uppercase text-slate-500 block mb-1">Chief Complaint & Symptoms</span>
+                        <div class="p-3 bg-white rounded-lg border border-slate-200 text-xs text-slate-800 font-medium" x-text="selectedPatient.chief_complaint"></div>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-bold uppercase text-slate-500 block mb-1.5">Measured Physiological Vitals</span>
+                        <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-center">
+                                <span class="text-[10px] text-slate-500 block">Heart Rate</span>
+                                <span class="text-sm font-bold text-slate-900 font-mono" x-text="selectedPatient.raw_heart_rate !== null && selectedPatient.raw_heart_rate !== '' ? (selectedPatient.raw_heart_rate + ' bpm') : '-'"></span>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-center">
+                                <span class="text-[10px] text-slate-500 block">Resp. Rate</span>
+                                <span class="text-sm font-bold text-slate-900 font-mono" x-text="selectedPatient.raw_resp_rate !== null && selectedPatient.raw_resp_rate !== '' ? (selectedPatient.raw_resp_rate + ' br/m') : '-'"></span>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-center">
+                                <span class="text-[10px] text-slate-500 block">SpO₂</span>
+                                <span class="text-sm font-bold text-slate-900 font-mono" x-text="selectedPatient.raw_spo2 !== null && selectedPatient.raw_spo2 !== '' ? (selectedPatient.raw_spo2 + '%') : '-'"></span>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-center">
+                                <span class="text-[10px] text-slate-500 block">Systolic BP</span>
+                                <span class="text-sm font-bold text-slate-900 font-mono" x-text="selectedPatient.raw_systolic_bp !== null && selectedPatient.raw_systolic_bp !== '' ? (selectedPatient.raw_systolic_bp + ' mmHg') : '-'"></span>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-center">
+                                <span class="text-[10px] text-slate-500 block">Temperature</span>
+                                <span class="text-sm font-bold text-slate-900 font-mono" x-text="selectedPatient.raw_temp !== null && selectedPatient.raw_temp !== '' ? (selectedPatient.raw_temp + ' °C') : '-'"></span>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-center">
+                                <span class="text-[10px] text-slate-500 block">AVPU State</span>
+                                <span class="text-sm font-bold text-slate-900 font-mono" x-text="selectedPatient.raw_avpu !== null && selectedPatient.raw_avpu !== '' ? selectedPatient.raw_avpu : '-'"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                    <button @click="disagreeAndChooseBed(selectedPatient)" class="py-3 px-4 bg-white hover:bg-amber-50 text-amber-700 border border-amber-300 rounded-xl text-xs font-bold shadow-2xs transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-arrows-rotate text-sm"></i>
+                        <span>Disagree & Choose Bed</span>
+                    </button>
+                    <button @click="removePatientCompletely(selectedPatient.id, 'Left (Checked Elsewhere)')" class="py-3 px-4 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold shadow-2xs transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-person-walking-arrow-right text-sm"></i>
+                        <span>Left (Checked Elsewhere)</span>
+                    </button>
+                    <button @click="removePatientCompletely(selectedPatient.id, 'Consulted without Bed')" class="py-3 px-4 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-bold shadow-2xs transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-user-doctor text-sm"></i>
+                        <span>Consulted without Bed</span>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </main>
+
+    <div x-show="showIntakeModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div @click.outside="showIntakeModal = false" class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">New Patient Intake & Triage Engine</h3>
+                    <p class="text-xs text-slate-500">Enter patient vitals and symptoms or use Gemini AI Magic Parse</p>
+                </div>
+                <button @click="showIntakeModal = false" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-5">
+                <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                            <i class="fa-solid fa-wand-magic-sparkles text-blue-600"></i>
+                            Gemini AI Natural Language Intake Parser
+                        </label>
+                        <span class="text-[10px] text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full font-medium">Gemini 3 Flash</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <textarea x-model="nlpInputText" rows="2" placeholder="e.g. 58 yr old male Rahul came with chest pain radiating to left arm, sweating, dizziness, HR 110, BP 140/90, SpO2 94%" class="w-full text-xs p-2.5 bg-white border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <button @click="parseWithGeminiNLP()" class="px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition flex flex-col items-center justify-center shrink-0">
+                            <i class="fa-solid fa-bolt mb-1"></i>
+                            <span>Magic Parse</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Patient Name</label>
+                        <input type="text" x-model="newPatient.name" placeholder="e.g. Ramesh Kumar" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Age (Years)</label>
+                            <input type="number" x-model.number="newPatient.age" placeholder="34" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Gender</label>
+                            <select x-model="newPatient.gender" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Presenting Symptoms & Chief Complaint</label>
+                    <textarea x-model="newPatient.chief_complaint" rows="2" placeholder="Describe symptoms, trauma, pain location..." class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Heart Rate (bpm)</label>
+                        <input type="number" x-model="newPatient.heart_rate" placeholder="Optional" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Resp. Rate (br/m)</label>
+                        <input type="number" x-model="newPatient.resp_rate" placeholder="Optional" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">SpO₂ (%)</label>
+                        <input type="number" x-model="newPatient.spo2" placeholder="Optional" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Systolic BP (mmHg)</label>
+                        <input type="number" x-model="newPatient.systolic_bp" placeholder="Optional" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Temperature (°C)</label>
+                        <input type="number" step="0.1" x-model="newPatient.temp" placeholder="Optional" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">AVPU Consciousness</label>
+                        <select x-model="newPatient.avpu" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Not Provided --</option>
+                            <option value="Alert">Alert</option>
+                            <option value="Voice">Voice</option>
+                            <option value="Pain">Pain</option>
+                            <option value="Unresponsive">Unresponsive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                    <button @click="showIntakeModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">Cancel</button>
+                    <button @click="submitNewPatient()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md transition">Run Triage & Add to Queue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="showOverrideModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div @click.outside="showOverrideModal = false" class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-200 bg-slate-50">
+                <h3 class="text-base font-bold text-slate-900">Clinician Override & Bed Selection</h3>
+                <p class="text-xs text-slate-500" x-text="'Patient: ' + (overridePatient ? overridePatient.name : '')"></p>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Override Triage Color Tier</label>
+                    <select x-model="overrideColor" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold uppercase">
+                        <option value="blue">Blue (Bypass)</option>
+                        <option value="red">Red (Emergent)</option>
+                        <option value="orange">Orange (Urgent)</option>
+                        <option value="yellow">Yellow (Semi-Urgent)</option>
+                        <option value="green">Green (Routine)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Select Bed / Seating Type</label>
+                    <select x-model="overrideBedType" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold">
+                        <option value="critical">Critical / Resus Bed</option>
+                        <option value="emergency">Emergency Bed</option>
+                        <option value="general">General Bed</option>
+                        <option value="chairs">Chair</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Clinical Justification</label>
+                    <textarea x-model="overrideReason" rows="3" placeholder="Enter mandatory medical justification..." class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div class="flex items-center justify-end space-x-2 pt-2">
+                    <button @click="showOverrideModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">Cancel</button>
+                    <button @click="applyCustomBedAllotment()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md transition">Allot & Remove from Queue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function triageDataSource() {
+            return [
+                {
+                    id: 'UHID-101',
+                    name: 'Vikram Malhotra',
+                    age: 34,
+                    gender: 'Male',
+                    chief_complaint: 'Road traffic accident, severe hand bleeding and pain, suspected fracture',
+                    heart_rate: 112,
+                    resp_rate: 22,
+                    spo2: 98,
+                    systolic_bp: 125,
+                    temp: 37.2,
+                    avpu: 'Alert',
+                    additional_flags: 'trauma, bleeding',
+                    waitTime: 14
+                },
+                {
+                    id: 'UHID-102',
+                    name: 'Ananya Iyer',
+                    age: 4,
+                    gender: 'Female',
+                    chief_complaint: 'High fever 103F, lethargic, rapid breathing, nasal flaring',
+                    heart_rate: 140,
+                    resp_rate: 36,
+                    spo2: 93,
+                    systolic_bp: 90,
+                    temp: 39.4,
+                    avpu: 'Alert',
+                    additional_flags: 'pediatric, respiratory distress',
+                    waitTime: 56
+                },
+                {
+                    id: 'UHID-103',
+                    name: 'Rajesh Kumar',
+                    age: 58,
+                    gender: 'Male',
+                    chief_complaint: 'Chest pain radiating to left arm, sweating, dizziness',
+                    heart_rate: 110,
+                    resp_rate: 24,
+                    spo2: 94,
+                    systolic_bp: 115,
+                    temp: 36.5,
+                    avpu: 'Alert',
+                    additional_flags: 'cardiac',
+                    waitTime: 22
+                },
+                {
+                    id: 'UHID-104',
+                    name: 'Priya Sharma',
+                    age: 27,
+                    gender: 'Female',
+                    chief_complaint: 'Mild headache and sore throat for 2 days',
+                    heart_rate: '',
+                    resp_rate: 16,
+                    spo2: 99,
+                    systolic_bp: 120,
+                    temp: 37.1,
+                    avpu: 'Alert',
+                    additional_flags: '',
+                    waitTime: 180
+                },
+                {
+                    id: 'UHID-105',
+                    name: 'Amit Patel',
+                    age: 45,
+                    gender: 'Male',
+                    chief_complaint: 'Severe abdominal pain, persistent vomiting, dizziness',
+                    heart_rate: 105,
+                    resp_rate: 20,
+                    spo2: 97,
+                    systolic_bp: 105,
+                    temp: 38.2,
+                    avpu: 'Alert',
+                    additional_flags: 'acute abdomen',
+                    waitTime: 45
+                },
+                {
+                    id: 'UHID-106',
+                    name: 'Sunita Rao',
+                    age: 62,
+                    gender: 'Female',
+                    chief_complaint: 'Sudden onset right-sided weakness and slurred speech',
+                    heart_rate: 88,
+                    resp_rate: 18,
+                    spo2: 96,
+                    systolic_bp: 185,
+                    temp: 36.8,
+                    avpu: 'Alert',
+                    additional_flags: 'stroke',
+                    waitTime: 8
+                },
+                {
+                    id: 'UHID-107',
+                    name: 'Karan Verma',
+                    age: 19,
+                    gender: 'Male',
+                    chief_complaint: 'Ankle sprain during sports activity, unable to bear weight',
+                    heart_rate: 82,
+                    resp_rate: 15,
+                    spo2: 99,
+                    systolic_bp: 122,
+                    temp: 36.6,
+                    avpu: 'Alert',
+                    additional_flags: 'ortho',
+                    waitTime: 110
+                },
+                {
+                    id: 'UHID-108',
+                    name: 'Meena Kumari',
+                    age: 50,
+                    gender: 'Female',
+                    chief_complaint: 'Severe shortness of breath, wheezing, history of asthma',
+                    heart_rate: 118,
+                    resp_rate: 32,
+                    spo2: 90,
+                    systolic_bp: 130,
+                    temp: 37.0,
+                    avpu: 'Alert',
+                    additional_flags: 'respiratory',
+                    waitTime: 30
+                }
+            ];
+        }
+
+        function triageDashboard() {
+            return {
+                queue: [],
+                selectedPatient: null,
+                searchQuery: '',
+                filterTier: 'all',
+                simMinutes: 1185,
+                simRunning: true,
+                simTimer: null,
+                showIntakeModal: false,
+                showOverrideModal: false,
+                showResourceSetupModal: false,
+                overridePatient: null,
+                overrideColor: 'orange',
+                overrideBedType: 'general',
+                overrideReason: '',
+                nlpInputText: '',
+                
+                resources: {
+                    beds: {
+                        critical: { total: 12, free: 12 },
+                        emergency: { total: 12, free: 12 },
+                        general: { total: 12, free: 12 },
+                        chairs: { total: 12, free: 12 }
+                    },
+                    staff: {
+                        doctors: { total: 8 },
+                        nurses: { total: 14 }
+                    }
+                },
+
+                newPatient: {
+                    id: '',
+                    name: '',
+                    age: 30,
+                    gender: 'Male',
+                    chief_complaint: '',
+                    heart_rate: '',
+                    resp_rate: '',
+                    spo2: '',
+                    systolic_bp: '',
+                    temp: '',
+                    avpu: 'Alert',
+                    additional_flags: ''
+                },
+
+                init() {
+                    const rawData = triageDataSource();
+                    this.queue = rawData.map(p => this.processTriage(p));
+                    if (this.queue.length > 0) {
+                        this.selectedPatient = this.queue[0];
+                    }
+                    this.simTimer = setInterval(() => {
+                        if (this.simRunning) {
+                            this.simMinutes += 1;
+                            this.queue.forEach(p => p.waitTime += 1);
+                        }
+                    }, 60000);
+                },
+
+                freeUpBed(type) {
+                    const bedObj = this.resources.beds[type];
+                    const currentUsed = bedObj.total - bedObj.free;
+                    if (currentUsed > 0) {
+                        bedObj.free = Math.min(bedObj.total, bedObj.free + 1);
+                    } else {
+                        bedObj.free = 0;
+                    }
+                },
+
+                get totalUsedBeds() {
+                    const b = this.resources.beds;
+                    return (b.critical.total - b.critical.free) +
+                           (b.emergency.total - b.emergency.free) +
+                           (b.general.total - b.general.free) +
+                           (b.chairs.total - b.chairs.free);
+                },
+
+                get isAllBedsFull() {
+                    const b = this.resources.beds;
+                    return b.critical.free === 0 && b.emergency.free === 0 && b.general.free === 0 && b.chairs.free === 0;
+                },
+
+                get surgeRatioValue() {
+                    const totalLoad = this.queue.length + this.totalUsedBeds;
+                    const docs = Math.max(1, this.resources.staff.doctors.total);
+                    return (totalLoad / docs).toFixed(1);
+                },
+
+                get patientsPerDoctorRatio() {
+                    return this.surgeRatioValue;
+                },
+
+                get surgeLevel() {
+                    const ratio = parseFloat(this.surgeRatioValue);
+                    if (ratio < 4) return 1; // Normal
+                    if (ratio >= 4 && ratio <= 7) return 2; // Moderate
+                    if (ratio >= 8 && ratio <= 11) return 3; // Critical / Surge
+                    return 4; // Severe / Mass Casualty
+                },
+
+                get surgeStatusTitle() {
+                    switch(this.surgeLevel) {
+                        case 1: return 'Level 1 — Normal Operations';
+                        case 2: return 'Level 2 — Moderate Surge';
+                        case 3: return 'Level 3 — Critical / Surge';
+                        case 4: return 'Level 4 — Severe / Mass Casualty';
+                    }
+                },
+
+                get surgeStatusMeaning() {
+                    switch(this.surgeLevel) {
+                        case 1: return 'Routine operations. Load ratio is within safe baseline (< 4).';
+                        case 2: return 'Getting busy. Load ratio is rising between 4-7.';
+                        case 3: return 'Approaching your surge threshold. Load ratio is between 8-11.';
+                        case 4: return 'Danger zone! Load ratio is ≥ 12 (3× threshold). Emergency protocols active.';
+                    }
+                },
+
+                get surgeLevelClass() {
+                    switch(this.surgeLevel) {
+                        case 1: return 'bg-emerald-50 border-emerald-300 text-emerald-900';
+                        case 2: return 'bg-yellow-50 border-yellow-300 text-yellow-900';
+                        case 3: return 'bg-orange-50 border-orange-300 text-orange-900';
+                        case 4: return 'bg-red-50 border-red-300 text-red-900 animate-pulse';
+                    }
+                },
+
+                get surgeIconColorClass() {
+                    switch(this.surgeLevel) {
+                        case 1: return 'text-emerald-600';
+                        case 2: return 'text-yellow-600';
+                        case 3: return 'text-orange-600';
+                        case 4: return 'text-red-600';
+                    }
+                },
+
+                get surgeIconClass() {
+                    switch(this.surgeLevel) {
+                        case 1: return 'fa-shield-heart';
+                        case 2: return 'fa-triangle-exclamation';
+                        case 3: return 'fa-bolt-lightning';
+                        case 4: return 'fa-skull-crossbones';
+                    }
+                },
+
+                getLiveCascadeBedRecommendation(patient) {
+                    if (this.isAllBedsFull && (patient.assignedColor === 'green' || patient.assignedColor === 'yellow')) {
+                        return 'Fast-Track Available';
+                    }
+
+                    const r = this.resources.beds;
+                    const findAvailableCascade = (preferredOrder) => {
+                        for (let type of preferredOrder) {
+                            if (r[type].free > 0) {
+                                return this.formatBedName(type);
+                            }
+                        }
+                        return 'Queue Wait (All Beds Full)';
+                    };
+
+                    const color = patient.assignedColor;
+                    if (color === 'blue') return findAvailableCascade(['critical', 'emergency', 'general', 'chairs']);
+                    else if (color === 'red') return findAvailableCascade(['emergency', 'critical', 'general', 'chairs']);
+                    else if (color === 'orange' || color === 'yellow') return findAvailableCascade(['general', 'emergency', 'critical', 'chairs']);
+                    else return findAvailableCascade(['chairs', 'general', 'emergency', 'critical']);
+                },
+
+                formatBedName(type) {
+                    switch(type) {
+                        case 'critical': return 'Critical / Resus Bed';
+                        case 'emergency': return 'Emergency Bed';
+                        case 'general': return 'General Bed';
+                        case 'chairs': return 'Chair';
+                        default: return 'General Bed';
+                    }
+                },
+
+                get currentLoadRatio() {
+                    const beds = this.resources.beds;
+                    const occupiedBeds = (beds.critical.total - beds.critical.free) +
+                                         (beds.emergency.total - beds.emergency.free) +
+                                         (beds.general.total - beds.general.free) +
+                                         (beds.chairs.total - beds.chairs.free);
+                    const docs = Math.max(1, this.resources.staff.doctors.total);
+                    return (occupiedBeds / docs).toFixed(2);
+                },
+
+                allotRecommendedBed(patient) {
+                    const rec = this.getLiveCascadeBedRecommendation(patient);
+                    if (rec.includes('Queue Wait')) {
+                        alert('Patient remains in queue as no beds or chairs are currently available.');
+                        return;
+                    }
+
+                    let targetKey = 'general';
+                    if (rec.includes('Critical')) targetKey = 'critical';
+                    else if (rec.includes('Emergency')) targetKey = 'emergency';
+                    else if (rec.includes('General')) targetKey = 'general';
+                    else if (rec.includes('Chair')) targetKey = 'chairs';
+
+                    if (this.resources.beds[targetKey].free > 0) {
+                        this.resources.beds[targetKey].free -= 1;
+                    }
+                    this.removePatientCompletely(patient.id, 'Bed Allotted (' + rec + ')');
+                },
+
+                sendToFastTrack(patient) {
+                    this.removePatientCompletely(patient.id, 'Sent to Fast-Track Express (Left Queue)');
+                },
+
+                disagreeAndChooseBed(patient) {
+                    this.overridePatient = patient;
+                    this.overrideColor = patient.assignedColor;
+                    this.overrideBedType = 'general';
+                    this.overrideReason = '';
+                    this.showOverrideModal = true;
+                },
+
+                applyCustomBedAllotment() {
+                    if (!this.overrideReason.trim()) {
+                        alert('Please provide a medical justification.');
+                        return;
+                    }
+                    if (this.overridePatient) {
+                        const targetKey = this.overrideBedType;
+                        if (this.resources.beds[targetKey].free > 0) {
+                            this.resources.beds[targetKey].free -= 1;
+                        }
+                        this.removePatientCompletely(this.overridePatient.id, 'Custom Bed Allotted (' + this.formatBedName(targetKey) + ')');
+                    }
+                    this.showOverrideModal = false;
+                },
+
+                removePatientCompletely(id, disposition) {
+                    this.queue = this.queue.filter(p => p.id !== id);
+                    if (this.selectedPatient && this.selectedPatient.id === id) {
+                        this.selectedPatient = this.queue.length > 0 ? this.queue[0] : null;
+                    }
+                },
+
+                get simTimeString() {
+                    const hours = Math.floor(this.simMinutes / 60) % 24;
+                    const mins = this.simMinutes % 60;
+                    return String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
+                },
+
+                adjustTime(mins) {
+                    this.simMinutes += mins;
+                    this.queue.forEach(p => p.waitTime = Math.max(0, p.waitTime + mins));
+                },
+
+                toggleSim() {
+                    this.simRunning = !this.simRunning;
+                },
+
+                processTriage(patient) {
+                    patient.raw_heart_rate = patient.heart_rate;
+                    patient.raw_resp_rate = patient.resp_rate;
+                    patient.raw_spo2 = patient.spo2;
+                    patient.raw_systolic_bp = patient.systolic_bp;
+                    patient.raw_temp = patient.temp;
+                    patient.raw_avpu = patient.avpu;
+
+                    const missingList = [];
+                    if (patient.heart_rate === '' || patient.heart_rate === undefined || patient.heart_rate === null) missingList.push('Heart Rate');
+                    if (patient.resp_rate === '' || patient.resp_rate === undefined || patient.resp_rate === null) missingList.push('Resp Rate');
+                    if (patient.spo2 === '' || patient.spo2 === undefined || patient.spo2 === null) missingList.push('SpO₂');
+                    if (patient.systolic_bp === '' || patient.systolic_bp === undefined || patient.systolic_bp === null) missingList.push('Systolic BP');
+                    if (patient.temp === '' || patient.temp === undefined || patient.temp === null) missingList.push('Temperature');
+                    if (patient.avpu === '' || patient.avpu === undefined || patient.avpu === null) missingList.push('AVPU State');
+
+                    const eval_hr = (patient.heart_rate === '' || patient.heart_rate === undefined || patient.heart_rate === null) ? 80 : Number(patient.heart_rate);
+                    const eval_rr = (patient.resp_rate === '' || patient.resp_rate === undefined || patient.resp_rate === null) ? 16 : Number(patient.resp_rate);
+                    const eval_spo2 = (patient.spo2 === '' || patient.spo2 === undefined || patient.spo2 === null) ? 98 : Number(patient.spo2);
+                    const eval_sbp = (patient.systolic_bp === '' || patient.systolic_bp === undefined || patient.systolic_bp === null) ? 120 : Number(patient.systolic_bp);
+                    const eval_temp = (patient.temp === '' || patient.temp === undefined || patient.temp === null) ? 37.0 : Number(patient.temp);
+                    const eval_avpu = (patient.avpu === '' || patient.avpu === undefined || patient.avpu === null) ? 'Alert' : patient.avpu;
+
+                    let score = 0;
+                    let maxSingleScore = 0;
+                    const isPediatric = patient.age < 12;
+
+                    const text = (patient.chief_complaint + ' ' + (patient.additional_flags || '')).toLowerCase();
+                    const isArrest = text.includes('arrest') || text.includes('cpr') || text.includes('unconscious no pulse');
+                    const isSeizure = text.includes('seizure') || text.includes('active seizure');
+                    const isHemorrhage = text.includes('major hemorrhage') || text.includes('uncontrolled bleeding');
+
+                    if (isArrest || isSeizure || isHemorrhage || eval_avpu === 'Unresponsive') {
+                        patient.score = 12;
+                        patient.assignedColor = 'blue';
+                        patient.staffReason = `Immediate life threat: Cardiac/respiratory arrest or unresponsive state requiring instant resuscitation.${missingList.length > 0 ? ' [Notice: Missing vitals (' + missingList.join(', ') + ') evaluated using baseline defaults]' : ''}`;
+                        patient.confidence = Math.max(5, 100 - (missingList.length * 10));
+                        patient.aiPrediction = {
+                            primaryCondition: 'Critical Emergency / Cardiac Arrest / Major Trauma',
+                            riskLevel: 'Immediate Fatal Risk',
+                            rationale: 'Patient presents with immediate life-threatening physiological collapse requiring instant resuscitation room placement.'
+                        };
+                        return patient;
+                    }
+
+                    if (!isPediatric) {
+                        if (eval_rr <= 8 || eval_rr >= 30) { score += 3; maxSingleScore = Math.max(maxSingleScore, 3); }
+                        else if (eval_rr >= 25) { score += 2; maxSingleScore = Math.max(maxSingleScore, 2); }
+                        else if (eval_rr >= 21 || (eval_rr >= 9 && eval_rr <= 11)) { score += 1; maxSingleScore = Math.max(maxSingleScore, 1); }
+
+                        if (eval_sbp <= 90 || eval_sbp >= 220) { score += 3; maxSingleScore = Math.max(maxSingleScore, 3); }
+                        else if (eval_sbp <= 100) { score += 2; maxSingleScore = Math.max(maxSingleScore, 2); }
+                        else if (eval_sbp <= 110) { score += 1; maxSingleScore = Math.max(maxSingleScore, 1); }
+
+                        if (eval_hr <= 40 || eval_hr >= 131) { score += 3; maxSingleScore = Math.max(maxSingleScore, 3); }
+                        else if (eval_hr >= 111 || (eval_hr >= 41 && eval_hr <= 50)) { score += 1; maxSingleScore = Math.max(maxSingleScore, 1); }
+                    } else {
+                        let band = { hrMin: 80, hrMax: 125, rrMin: 20, rrMax: 30, sbpMin: 90, sbpMax: 105 };
+                        if (patient.age < 0.25) band = { hrMin: 110, hrMax: 160, rrMin: 30, rrMax: 60, sbpMin: 65, sbpMax: 85 };
+                        else if (patient.age < 0.5) band = { hrMin: 100, hrMax: 150, rrMin: 30, rrMax: 45, sbpMin: 70, sbpMax: 90 };
+                        else if (patient.age < 1) band = { hrMin: 90, hrMax: 130, rrMin: 25, rrMax: 40, sbpMin: 80, sbpMax: 100 };
+                        else if (patient.age <= 3) band = { hrMin: 80, hrMax: 125, rrMin: 20, rrMax: 30, sbpMin: 90, sbpMax: 105 };
+                        else if (patient.age <= 6) band = { hrMin: 70, hrMax: 115, rrMin: 20, rrMax: 25, sbpMin: 95, sbpMax: 110 };
+                        else band = { hrMin: 60, hrMax: 100, rrMin: 14, rrMax: 22, sbpMin: 100, sbpMax: 120 };
+
+                        const hrDev = eval_hr < band.hrMin ? (band.hrMin - eval_hr) : (eval_hr > band.hrMax ? eval_hr - band.hrMax : 0);
+                        const hrPts = hrDev === 0 ? 0 : (hrDev <= (band.hrMax - band.hrMin) * 0.15 ? 1 : (hrDev <= (band.hrMax - band.hrMin) * 0.30 ? 2 : 3));
+                        score += hrPts; maxSingleScore = Math.max(maxSingleScore, hrPts);
+
+                        const rrDev = eval_rr < band.rrMin ? (band.rrMin - eval_rr) : (eval_rr > band.rrMax ? eval_rr - band.rrMax : 0);
+                        const rrPts = rrDev === 0 ? 0 : (rrDev <= (band.rrMax - band.rrMin) * 0.15 ? 1 : (rrDev <= (band.rrMax - band.rrMin) * 0.30 ? 2 : 3));
+                        score += rrPts; maxSingleScore = Math.max(maxSingleScore, rrPts);
+
+                        const sbpDev = eval_sbp < band.sbpMin ? (band.sbpMin - eval_sbp) : (eval_sbp > band.sbpMax ? eval_sbp - band.sbpMax : 0);
+                        const sbpPts = sbpDev === 0 ? 0 : (sbpDev <= (band.sbpMax - band.sbpMin) * 0.15 ? 1 : (sbpDev <= (band.sbpMax - band.sbpMin) * 0.30 ? 2 : 3));
+                        score += sbpPts; maxSingleScore = Math.max(maxSingleScore, sbpPts);
+                    }
+
+                    if (eval_spo2 <= 91) { score += 3; maxSingleScore = Math.max(maxSingleScore, 3); }
+                    else if (eval_spo2 <= 93) { score += 2; maxSingleScore = Math.max(maxSingleScore, 2); }
+                    else if (eval_spo2 <= 95) { score += 1; maxSingleScore = Math.max(maxSingleScore, 1); }
+
+                    if (eval_temp <= 35.0 || eval_temp >= 39.1) { score += 3; maxSingleScore = Math.max(maxSingleScore, 3); }
+                    else if (eval_temp <= 36.0 || (eval_temp >= 38.1 && eval_temp <= 39.0)) { score += 1; maxSingleScore = Math.max(maxSingleScore, 1); }
+
+                    if (eval_avpu === 'Unresponsive' || eval_avpu === 'New-onset confusion') { score += 3; maxSingleScore = Math.max(maxSingleScore, 3); }
+                    else if (eval_avpu === 'Pain') { score += 2; maxSingleScore = Math.max(maxSingleScore, 2); }
+                    else if (eval_avpu === 'Voice') { score += 1; maxSingleScore = Math.max(maxSingleScore, 1); }
+
+                    let symptomRed = false;
+                    let symptomOrange = false;
+                    let staffReason = '';
+                    let aiPrediction = {
+                        primaryCondition: 'Acute General Presentation',
+                        riskLevel: 'Moderate',
+                        rationale: 'Symptoms and vitals evaluated against standard emergency criteria.'
+                    };
+
+                    const hasRadiation = text.includes('radiation') || text.includes('radiating') || text.includes('jaw') || text.includes('shoulder') || text.includes('left arm');
+                    const hasSweating = text.includes('sweating') || text.includes('diaphoresis') || text.includes('pasina');
+                    const hasChestPain = text.includes('chest pain') || text.includes('seene mein dard');
+
+                    if (hasChestPain && (hasRadiation || hasSweating)) {
+                        if (hasRadiation && hasSweating) {
+                            symptomRed = true;
+                            staffReason = `Heart Attack Risk (ACS): Patient reports chest pain with arm/shoulder/jaw radiation and heavy sweating, combined with tachycardia (${eval_hr} bpm). Urgent ECG required.`;
+                            aiPrediction = {
+                                primaryCondition: 'Acute Coronary Syndrome (Suspected STEMI / Heart Attack)',
+                                riskLevel: 'Critical High',
+                                rationale: 'Chest pain with radiation and diaphoresis strongly indicates acute coronary occlusion. Requires instant cardiology consult and ECG.'
+                            };
+                        } else {
+                            symptomOrange = true;
+                            staffReason = `Ischemic Chest Pain: Chest pain reported with associated risk factors. Urgent cardiac evaluation needed.`;
+                            aiPrediction = {
+                                primaryCondition: 'Acute Coronary Syndrome / Ischemic Chest Pain',
+                                riskLevel: 'High',
+                                rationale: 'Chest pain with associated risk factors requires prompt cardiac biomarker and electrocardiographic evaluation.'
+                            };
+                        }
+                    } else if (text.includes('stroke') || text.includes('weakness') || text.includes('droop') || text.includes('slurred speech')) {
+                        symptomRed = true;
+                        staffReason = `Stroke Emergency: Sudden focal neurological deficit with elevated blood pressure (${eval_sbp} mmHg). Immediate neuroimaging needed.`;
+                        aiPrediction = {
+                            primaryCondition: 'Acute Cerebrovascular Accident (Acute Stroke)',
+                            riskLevel: 'Critical High',
+                            rationale: 'Sudden onset neurological deficit with elevated BP indicates acute stroke pathway activation within therapeutic window.'
+                        };
+                    } else if (text.includes('shortness of breath') || text.includes('wheezing') || text.includes('asthma')) {
+                        symptomOrange = true;
+                        staffReason = `Respiratory Distress: Tachypnea (RR ${eval_rr}/m) and oxygen desaturation (SpO₂ ${eval_spo2}%) in patient with breathing difficulty.`;
+                        aiPrediction = {
+                            primaryCondition: 'Acute Severe Asthma Exacerbation / Bronchospasm',
+                            riskLevel: 'High',
+                            rationale: 'Tachypnea and oxygen desaturation in patient with obstructive airway symptoms requires nebulized bronchodilators.'
+                        };
+                    } else if (text.includes('accident') || text.includes('trauma') || text.includes('bleeding')) {
+                        symptomOrange = true;
+                        staffReason = `Acute Trauma & Hemorrhage: Recent physical trauma with active bleeding and pain. Wound management and orthopedic assessment required.`;
+                        aiPrediction = {
+                            primaryCondition: 'Acute Traumatic Injury & Soft Tissue Hemorrhage',
+                            riskLevel: 'Moderate-High',
+                            rationale: 'Trauma presentation with bleeding requires wound care, tetanus prophylaxis, and fracture screening.'
+                        };
+                    } else if (isPediatric && (text.includes('fever') || text.includes('lethargic') || text.includes('flaring'))) {
+                        symptomOrange = true;
+                        staffReason = `Pediatric Systemic Risk: High fever (${eval_temp}°C) and respiratory compromise in pediatric patient. Sepsis screening needed.`;
+                        aiPrediction = {
+                            primaryCondition: 'Pediatric Febrile Illness with Respiratory Distress',
+                            riskLevel: 'High',
+                            rationale: 'Fever and respiratory compromise in child requires urgent pediatric evaluation and sepsis workup.'
+                        };
+                    } else {
+                        if (maxSingleScore >= 3 || score >= 7) {
+                            staffReason = `Critical Vitals Compromise: Extreme physiological deviation detected (Score ${score}, worst vital flagged).`;
+                        } else if (score >= 5) {
+                            staffReason = `Urgent Physiological Strain: Elevated vital signs indicating moderate-high clinical instability.`;
+                        } else if (score >= 3) {
+                            staffReason = `Semi-Urgent Presentation: Mild vital sign abnormalities requiring timely medical review.`;
+                        } else {
+                            staffReason = `Routine Non-Urgent Presentation: Stable vitals within normal baseline limits.`;
+                        }
+                        aiPrediction = {
+                            primaryCondition: patient.chief_complaint ? 'Acute Clinical Presentation' : 'General Triage Admission',
+                            riskLevel: score >= 5 ? 'High' : 'Moderate',
+                            rationale: `Evaluated based on reported symptoms (${patient.chief_complaint || 'routine visit'}) and measured physiological vitals.`
+                        };
+                    }
+
+                    if (missingList.length > 0) {
+                        staffReason += ` [⚠️ Missing Vitals Notice: ${missingList.join(', ')} unavailable; evaluated using normal baseline defaults]`;
+                    }
+
+                    let finalColor = 'green';
+                    if (score >= 7) finalColor = 'red';
+                    else if (score >= 5) finalColor = 'orange';
+                    else if (score >= 3) finalColor = 'yellow';
+                    else finalColor = 'green';
+
+                    if (maxSingleScore >= 3) finalColor = 'red';
+                    if (symptomRed) finalColor = 'red';
+                    else if (symptomOrange && finalColor !== 'red') finalColor = 'orange';
+
+                    let confidence = 100 - (missingList.length * 10);
+                    if (isPediatric) confidence -= 5;
+                    
+                    const vitalsAggregateColor = score >= 7 ? 'red' : (score >= 5 ? 'orange' : (score >= 3 ? 'yellow' : 'green'));
+                    const tierRanks = { green: 1, yellow: 2, orange: 3, red: 4, blue: 5 };
+                    if (tierRanks[finalColor] > tierRanks[vitalsAggregateColor] && tierRanks[vitalsAggregateColor] <= 2) {
+                        confidence -= 15;
+                    }
+                    if (score === 2 || score === 4 || score === 6) {
+                        confidence -= 10;
+                    }
+                    confidence = Math.min(100, Math.max(5, confidence));
+
+                    patient.score = score;
+                    patient.assignedColor = finalColor;
+                    patient.staffReason = staffReason;
+                    patient.confidence = confidence;
+                    patient.aiPrediction = aiPrediction;
+                    patient.missingVitals = missingList;
+
+                    return patient;
+                },
+
+                getCountByColor(color) {
+                    return this.queue.filter(p => p.assignedColor === color).length;
+                },
+
+                get filteredQueue() {
+                    let list = this.queue;
+                    if (this.filterTier !== 'all') {
+                        list = list.filter(p => p.assignedColor === this.filterTier);
+                    }
+                    if (this.searchQuery.trim() !== '') {
+                        const q = this.searchQuery.toLowerCase();
+                        list = list.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.chief_complaint.toLowerCase().includes(q));
+                    }
+                    const colorPriority = { blue: 0, red: 1, orange: 2, yellow: 3, green: 4 };
+                    return list.sort((a, b) => {
+                        if (colorPriority[a.assignedColor] !== colorPriority[b.assignedColor]) {
+                            return colorPriority[a.assignedColor] - colorPriority[b.assignedColor];
+                        }
+                        if (b.score !== a.score) {
+                            return b.score - a.score;
+                        }
+                        return b.waitTime - a.waitTime;
+                    });
+                },
+
+                get alertPatients() {
+                    const thresholds = { blue: 0, red: 10, orange: 30, yellow: 60, green: 240 };
+                    return this.queue.filter(p => p.waitTime > (thresholds[p.assignedColor] || 60));
+                },
+
+                get alertBannerText() {
+                    if (this.alertPatients.length === 0) return '';
+                    const p = this.alertPatients[0];
+                    return `Patient ${p.name} (${p.assignedColor.toUpperCase()}) has waited ${p.waitTime}m, exceeding target threshold. Immediate re-assessment recommended.`;
+                },
+
+                selectPatient(patient) {
+                    this.selectedPatient = patient;
+                },
+
+                openNewIntakeModal() {
+                    this.newPatient = {
+                        id: 'UHID-' + Math.floor(100 + Math.random() * 900),
+                        name: '',
+                        age: 32,
+                        gender: 'Male',
+                        chief_complaint: '',
+                        heart_rate: '',
+                        resp_rate: '',
+                        spo2: '',
+                        systolic_bp: '',
+                        temp: '',
+                        avpu: 'Alert',
+                        additional_flags: ''
+                    };
+                    this.nlpInputText = '';
+                    this.showIntakeModal = true;
+                },
+
+                parseWithGeminiNLP() {
+                    const text = this.nlpInputText.toLowerCase();
+                    if (!text) return;
+                    this.newPatient.chief_complaint = this.nlpInputText;
+                    if (text.includes('year') || text.includes('yr') || text.includes('yo')) {
+                        const match = text.match(/(\d+)\s*(?:yr|year|yo)/);
+                        if (match) this.newPatient.age = parseInt(match[1]);
+                    }
+                    if (text.includes('female') || text.includes('woman') || text.includes('girl')) {
+                        this.newPatient.gender = 'Female';
+                    } else if (text.includes('male') || text.includes('man') || text.includes('boy')) {
+                        this.newPatient.gender = 'Male';
+                    }
+                    if (text.includes('hr') || text.includes('heart rate')) {
+                        const match = text.match(/(?:hr|heart rate)\D*(\d+)/);
+                        if (match) this.newPatient.heart_rate = parseInt(match[1]);
+                    }
+                    if (text.includes('spo2') || text.includes('saturation')) {
+                        const match = text.match(/(?:spo2|saturation)\D*(\d+)/);
+                        if (match) this.newPatient.spo2 = parseInt(match[1]);
+                    }
+                    if (text.includes('bp') || text.includes('blood pressure')) {
+                        const match = text.match(/(?:bp)\D*(\d+)/);
+                        if (match) this.newPatient.systolic_bp = parseInt(match[1]);
+                    }
+                },
+
+                submitNewPatient() {
+                    if (!this.newPatient.name) {
+                        alert('Please enter patient name');
+                        return;
+                    }
+                    const processed = this.processTriage({
+                        ...this.newPatient,
+                        waitTime: 0
+                    });
+
+                    this.queue = this.queue.filter(p => p.id !== processed.id);
+                    this.queue.unshift(processed);
+                    this.selectedPatient = processed;
+                    this.showIntakeModal = false;
+                },
+
+                openOverrideModal(patient) {
+                    this.overridePatient = patient;
+                    this.overrideColor = patient.assignedColor;
+                    this.overrideReason = '';
+                    this.showOverrideModal = true;
+                },
+
+                applyOverride() {
+                    if (!this.overrideReason.trim()) {
+                        alert('Please provide a medical justification for override.');
+                        return;
+                    }
+                    if (this.overridePatient) {
+                        this.overridePatient.assignedColor = this.overrideColor;
+                        this.overridePatient.staffReason = `[Clinician Override to ${this.overrideColor.toUpperCase()}]: ${this.overrideReason}`;
+                        this.overridePatient.confidence = 100;
+                    }
+                    this.showOverrideModal = false;
+                },
+
+                handleCSVImport(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        let text = e.target.result;
+                        if (text.charCodeAt(0) === 0xFEFF) {
+                            text = text.slice(1);
+                        }
+                        const lines = text.split(/\r\n|\n/);
+                        if (lines.length < 2) return;
+                        
+                        const parseCSVLine = (line) => {
+                            const res = [];
+                            let cur = '';
+                            let inQuotes = false;
+                            for (let i = 0; i < line.length; i++) {
+                                const c = line[i];
+                                if (c === '"') {
+                                    inQuotes = !inQuotes;
+                                } else if (c === ',' && !inQuotes) {
+                                    res.push(cur.trim().replace(/^"|"$/g, ''));
+                                    cur = '';
+                                } else {
+                                    cur += c;
+                                }
+                            }
+                            res.push(cur.trim().replace(/^"|"$/g, ''));
+                            return res;
+                        };
+
+                        const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9_]/g, ''));
+                        
+                        for (let i = 1; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (!line) continue;
+                            const vals = parseCSVLine(line);
+                            
+                            const rowObj = {};
+                            headers.forEach((h, idx) => {
+                                rowObj[h] = vals[idx] !== undefined ? vals[idx] : '';
+                            });
+
+                            const getVal = (...keys) => {
+                                for (let k of keys) {
+                                    if (rowObj[k] !== undefined && rowObj[k] !== '') return rowObj[k];
+                                }
+                                return '';
+                            };
+
+                            const p = {
+                                id: getVal('id', 'patient_id', 'uhid') || ('UHID-' + Math.floor(100 + Math.random() * 900)),
+                                name: getVal('name', 'patient_name', 'fullname') || 'Unknown Patient',
+                                age: parseInt(getVal('age', 'patient_age')) || 30,
+                                gender: getVal('gender', 'sex') || 'Male',
+                                chief_complaint: getVal('chief_complaint', 'complaint', 'symptoms', 'reason') || 'General triage admission',
+                                heart_rate: getVal('heart_rate', 'hr', 'pulse'),
+                                resp_rate: getVal('resp_rate', 'rr', 'respiratory_rate'),
+                                spo2: getVal('spo2', 'oxygen', 'saturation'),
+                                systolic_bp: getVal('systolic_bp', 'sbp', 'bp', 'blood_pressure'),
+                                temp: getVal('temp', 'temperature'),
+                                avpu: getVal('avpu', 'consciousness'),
+                                additional_flags: getVal('additional_flags', 'history', 'flags') || '',
+                                waitTime: Math.floor(Math.random() * 45)
+                            };
+
+                            const processed = this.processTriage(p);
+                            this.queue = this.queue.filter(item => item.id !== processed.id);
+                            this.queue.push(processed);
+                        }
+                        if (this.queue.length > 0 && !this.selectedPatient) {
+                            this.selectedPatient = this.queue[0];
+                        }
+                    };
+                    reader.readAsText(file);
+                },
+
+                badgeColorClass(color) {
+                    switch(color) {
+                        case 'blue': return 'bg-blue-100 text-blue-800 border-blue-300';
+                        case 'red': return 'bg-red-100 text-red-800 border-red-300';
+                        case 'orange': return 'bg-orange-100 text-orange-800 border-orange-300';
+                        case 'yellow': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+                        default: return 'bg-green-100 text-green-800 border-green-300';
+                    }
+                },
+
+                dotColorClass(color) {
+                    switch(color) {
+                        case 'blue': return 'bg-blue-600 animate-pulse';
+                        case 'red': return 'bg-red-600 animate-pulse';
+                        case 'orange': return 'bg-orange-500';
+                        case 'yellow': return 'bg-yellow-500';
+                        default: return 'bg-green-500';
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
